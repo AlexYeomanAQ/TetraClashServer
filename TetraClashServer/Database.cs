@@ -14,30 +14,41 @@ namespace TetraClashServer
     {
         public static void CreateAccount (TcpClient client, string message)
         {
-            string username = message.Substring (0, message.IndexOf(':'));
-            string password = message.Substring(message.IndexOf(":"));
-
-            string salt = GenerateSalt();
-
-            string hashedPassword = HashPassword(password, salt);
+            string[] args = message.Split(":");
+            string username = args[0];
+            string hash = args[1];
+            string salt = args[2];
 
             string connectionString = $"Server=localhost\\MSSQLSERVER01;Database=TetraClashTest;Trusted_Connection=True;";
 
-            string insertQuery = $"INSERT INTO Player (Name, Salt, Password) VALUES ({username}, {salt}, {password})";
+            string insertQuery = $"INSERT INTO Player (Username, Hash, Salt) VALUES ({username}, {hash}, {salt})";
 
             using (IDbConnection db = new SqlConnection(connectionString))
             {
-                int rowsAffected = db.Execute(insertQuery);
-                Console.WriteLine($"{rowsAffected} row(s) inserted.");
+                string checkQuery = $"SELECT Username FROM Players WHERE Username = {username}";
+
+                string credentials = db.QuerySingleOrDefault<string>(checkQuery);
+
+                if (credentials != null)
+                {
+                    int rowsAffected = db.Execute(insertQuery);
+                    Console.WriteLine($"{rowsAffected} row(s) inserted.");
+                    
+                }
+                else return "Player Exists";
             }
         }
         public class PlayerCredentials
         {
+            public string Hash { get; set; }
             public string Salt { get; set; }
-            public string Password { get; set; }
         }
-        public static bool VerifyPlayer(TcpClient client, string username, string password)
+        public static string VerifyPlayer(TcpClient client, string message)
         {
+            string[] args = message.Split(":");
+            string username = args[1];
+            string password = args[2];
+
             string connectionString = $"Server=localhost\\MSSQLSERVER01;Database=TetraClashTest;Trusted_Connection=True;";
 
             try
@@ -46,25 +57,25 @@ namespace TetraClashServer
                 {
                     db.Open();
 
-                    string query = $"SELECT Salt, Password FROM Players WHERE Username = {username}";
+                    string query = $"SELECT Hash, Salt FROM Players WHERE Username = {username}";
 
-                    PlayerCredentials credentials = db.QuerySingleOrDefault<PlayerCredentials>(query);
+                    var credentials = db.QuerySingleOrDefault<PlayerCredentials>(query);
 
                     if (credentials != null)
                     {
-                        string checkPassword = HashPassword(password, credentials.Salt);
-                        if (checkPassword == credentials.Password)
+                        string hashAttempt = HashPassword(password, credentials.Salt);
+                        if (hashAttempt == credentials.Hash)
                         {
-                            return true;
+                            return "Success";
                         }
                         else
                         {
-                            return false;
+                            return "Password";
                         }
                     }
                     else
                     {
-                        return false;
+                        return "Username";
                     }
                 }
             }

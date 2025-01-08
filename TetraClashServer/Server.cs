@@ -8,14 +8,12 @@ namespace TetraClashServer
 {
     class Server
     {
-        static MatchMaking matchmaking;
+        static MatchMaking matchmaking = new MatchMaking();
         static void Main()
         {
             TcpListener server = new TcpListener(IPAddress.Any, 12345);
             server.Start();
             Console.WriteLine("Server Online");
-
-            matchmaking = new MatchMaking();
 
             while (true)
             {
@@ -44,6 +42,14 @@ namespace TetraClashServer
 
                 Database.CreateAccount(client, cropMessage);
             }
+            else if (message.StartsWith("login"))
+            {
+                cropMessage = message.Substring(5);
+
+                Database.VerifyPlayer(client, cropMessage);
+            }
         }
+
+        static void sendMessage()
     }
 }

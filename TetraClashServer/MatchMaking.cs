@@ -33,7 +33,7 @@ namespace TetraClashServer
             }
         }
 
-        static void NotifyPlayer(Player player, string message)
+        static void NotifyPlayer(TcpClient client, string message)
         {
             NetworkStream stream = player.Client.GetStream();
             byte[] buffer = Encoding.UTF8.GetBytes(message);
