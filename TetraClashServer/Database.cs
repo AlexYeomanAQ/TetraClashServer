@@ -12,77 +12,133 @@ namespace TetraClashServer
 {
     class Database
     {
-        public static void CreateAccount (TcpClient client, string message)
+        protected const string connectionString = $"Server=localhost\\MSSQLSERVER01;Database=TetraClashTest;Trusted_Connection=True;";
+
+        public static bool Initialize()
+        {
+            const string checkExistsQuery = @"
+            SELECT COUNT(*) 
+            FROM INFORMATION_SCHEMA.TABLES 
+            WHERE TABLE_NAME = 'Players'";
+
+            const string createTableQuery = @"
+            CREATE TABLE Players (
+                Username NVARCHAR(50) NOT NULL PRIMARY KEY,
+                Hash NVARCHAR(MAX) NOT NULL,
+                Salt NVARCHAR(MAX) NOT NULL
+            );";
+
+            using (IDbConnection db = new SqlConnection(connectionString))
+            {
+                try
+                {
+                    int tableCount = db.QuerySingleOrDefault<int>(checkExistsQuery);
+                    if (tableCount == 0)
+                    {
+                        db.Execute(createTableQuery);
+                    }
+                    Console.WriteLine("Database initialized");
+                    return true;
+                }
+                catch (Exception e)
+                {
+                    Console.WriteLine("Database fail to initialise: " + e);
+                    return false;
+                }
+            }
+        }
+
+        public static string CreateAccount(string message)
         {
             string[] args = message.Split(":");
+            if (args.Length < 3)
+            {
+                return "Invalid message format.";
+            }
+
             string username = args[0];
             string hash = args[1];
             string salt = args[2];
 
-            string connectionString = $"Server=localhost\\MSSQLSERVER01;Database=TetraClashTest;Trusted_Connection=True;";
-
-            string insertQuery = $"INSERT INTO Player (Username, Hash, Salt) VALUES ({username}, {hash}, {salt})";
+            string insertQuery = "INSERT INTO Players (Username, Hash, Salt) VALUES (@Username, @Hash, @Salt)";
+            string checkQuery = "SELECT Username FROM Players WHERE Username = @Username";
 
             using (IDbConnection db = new SqlConnection(connectionString))
             {
-                string checkQuery = $"SELECT Username FROM Players WHERE Username = {username}";
-
-                string credentials = db.QuerySingleOrDefault<string>(checkQuery);
-
-                if (credentials != null)
+                try
                 {
-                    int rowsAffected = db.Execute(insertQuery);
+                    string existingUser = db.QuerySingleOrDefault<string>(checkQuery, new { Username = username });
+                    if (existingUser != null)
+                    {
+                        return "Player Exists";
+                    }
+
+                    int rowsAffected = db.Execute(insertQuery, new { Username = username, Hash = hash, Salt = salt });
                     Console.WriteLine($"{rowsAffected} row(s) inserted.");
-                    
+                    return "Success";
                 }
-                else return "Player Exists";
+                catch (Exception e)
+                {
+                    Console.WriteLine($"Error: {e.Message}");
+                    return $"Error: {e.Message}";
+                }
             }
         }
-        public class PlayerCredentials
-        {
-            public string Hash { get; set; }
-            public string Salt { get; set; }
-        }
-        public static string VerifyPlayer(TcpClient client, string message)
-        {
-            string[] args = message.Split(":");
-            string username = args[1];
-            string password = args[2];
 
-            string connectionString = $"Server=localhost\\MSSQLSERVER01;Database=TetraClashTest;Trusted_Connection=True;";
-
-            try
+        public static string fetchSalt(string username)
+        {
+            using (IDbConnection db = new SqlConnection(connectionString))
             {
-                using (IDbConnection db = new SqlConnection(connectionString))
+                try
                 {
                     db.Open();
+                    string query = $"SELECT Salt FROM Players WHERE Username = @Username";
 
-                    string query = $"SELECT Hash, Salt FROM Players WHERE Username = {username}";
+                    var salt = db.QuerySingleOrDefault<string>(query, new { Username = username });
 
-                    var credentials = db.QuerySingleOrDefault<PlayerCredentials>(query);
-
-                    if (credentials != null)
-                    {
-                        string hashAttempt = HashPassword(password, credentials.Salt);
-                        if (hashAttempt == credentials.Hash)
-                        {
-                            return "Success";
-                        }
-                        else
-                        {
-                            return "Password";
-                        }
-                    }
-                    else
+                    if (salt == null)
                     {
                         return "Username";
                     }
+
+                    return salt;
+                }
+                catch (Exception e)
+                {
+                    return e.Message;
                 }
             }
-            catch (Exception e)
+        }
+        public static string VerifyPlayer(string message)
+        {
+            string[] args = message.Split(':');
+            string username = args[0];
+            string hashAttempt = args[1];
+
+            using (IDbConnection db = new SqlConnection(connectionString))
             {
-                Console.WriteLine(e.Message);
-                return false;
+                try
+                {
+                    db.Open();
+
+                    string query = $"SELECT Hash FROM Players WHERE Username = @Username";
+
+                    string hash = db.QuerySingle<string>(query, new {Username = username});
+
+                    if (hashAttempt == hash)
+                    {
+                        return "Success";
+                    }
+                    else
+                    {
+                        return "Password";
+                    }
+                }
+                catch (Exception e)
+                {
+                    Console.WriteLine(e.Message);
+                    return e.Message;
+                }
             }
         }
 

@@ -11,6 +11,13 @@ namespace TetraClashServer
         static MatchMaking matchmaking = new MatchMaking();
         static void Main()
         {
+            bool dbInit = Database.Initialize();
+
+            if (!dbInit)
+            {
+                Environment.Exit(0);
+            }
+
             TcpListener server = new TcpListener(IPAddress.Any, 12345);
             server.Start();
             Console.WriteLine("Server Online");
@@ -30,6 +37,8 @@ namespace TetraClashServer
         static void HandleResponse(TcpClient client, string message)
         {
             string cropMessage;
+            string query = "";
+
             if (message.StartsWith("search"))
             {
                 cropMessage = message.Substring(6);
@@ -40,16 +49,32 @@ namespace TetraClashServer
             {
                 cropMessage = message.Substring(6);
 
-                Database.CreateAccount(client, cropMessage);
+                query = Database.CreateAccount(cropMessage);
             }
             else if (message.StartsWith("login"))
             {
                 cropMessage = message.Substring(5);
 
-                Database.VerifyPlayer(client, cropMessage);
+                query = Database.VerifyPlayer(cropMessage);
             }
+            else if (message.StartsWith("salt"))
+            {
+                cropMessage = message.Substring(4);
+
+                query = Database.fetchSalt(cropMessage);
+            }
+            else
+            {
+                query = "Unknown Request";
+            }
+            sendResponse(client, query);
         }
 
-        static void sendMessage()
+        public static void sendResponse(TcpClient client, string response)
+        {
+            NetworkStream stream = client.GetStream();
+            byte[] buffer = Encoding.UTF8.GetBytes(response);
+            stream.Write(buffer, 0, buffer.Length);
+        }
     }
 }

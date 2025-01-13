@@ -25,17 +25,17 @@ namespace TetraClashServer
 
 
                 Console.WriteLine("Match created:");
-                foreach (Player player in matchPlayers)
+                for (int i = 0; i < matchPlayers.Count; i++)
                 {
-                    Console.WriteLine($" - {player.Name}");
-                    NotifyPlayer(player, "Match found vs");
+                    Console.WriteLine($" - {matchPlayers[i].Name}");
+                    Server.sendResponse(matchPlayers[i].Client, $"Match found vs {matchPlayers[(i+1)%2]}");
                 }
             }
         }
 
         static void NotifyPlayer(TcpClient client, string message)
         {
-            NetworkStream stream = player.Client.GetStream();
+            NetworkStream stream = client.GetStream();
             byte[] buffer = Encoding.UTF8.GetBytes(message);
             stream.Write(buffer, 0, buffer.Length);
         }
