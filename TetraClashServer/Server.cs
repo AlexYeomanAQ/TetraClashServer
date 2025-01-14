@@ -2,6 +2,7 @@
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
+using System.Threading;
 using System.Collections.Generic;
 
 namespace TetraClashServer
@@ -9,6 +10,7 @@ namespace TetraClashServer
     class Server
     {
         static MatchMaking matchmaking = new MatchMaking();
+        static Timer queueTimer;
         static void Main()
         {
             bool dbInit = Database.Initialize();
@@ -17,6 +19,8 @@ namespace TetraClashServer
             {
                 Environment.Exit(0);
             }
+
+            queueTimer = new Timer(TryPlayers, null, 0, 500);
 
             TcpListener server = new TcpListener(IPAddress.Any, 12345);
             server.Start();
@@ -75,6 +79,11 @@ namespace TetraClashServer
             NetworkStream stream = client.GetStream();
             byte[] buffer = Encoding.UTF8.GetBytes(response);
             stream.Write(buffer, 0, buffer.Length);
+        }
+
+        static void TryPlayers(object state)
+        {
+            matchmaking.TryMatchPlayers();
         }
     }
 }
