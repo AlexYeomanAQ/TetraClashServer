@@ -9,7 +9,6 @@ namespace TetraClashServer
 {
     class Server
     {
-        static MatchMaking matchmaking = new MatchMaking();
         static Timer queueTimer;
         static void Main()
         {
@@ -22,7 +21,7 @@ namespace TetraClashServer
 
             queueTimer = new Timer(TryPlayers, null, 0, 500);
 
-            TcpListener server = new TcpListener(IPAddress.Any, 12345);
+            TcpListener server = new TcpListener(IPAddress.Any, 55);
             server.Start();
             Console.WriteLine("Server Online");
 
@@ -41,37 +40,50 @@ namespace TetraClashServer
         static void HandleResponse(TcpClient client, string message)
         {
             string cropMessage;
-            string query = "";
+            string response = "";
 
             if (message.StartsWith("search"))
             {
                 cropMessage = message.Substring(6);
+
+                MatchMaking.EnQueue(client, cropMessage);
+            }
+            else if (message.StartsWith("cancel"))
+            {
+                cropMessage = message.Substring(6);
                 
-                matchmaking.EnQueue(client, cropMessage);
+                MatchMaking.DeQueue(client, cropMessage);
             }
             else if (message.StartsWith("create"))
             {
                 cropMessage = message.Substring(6);
 
-                query = Database.CreateAccount(cropMessage);
+                response = Database.CreateAccount(cropMessage);
             }
             else if (message.StartsWith("login"))
             {
                 cropMessage = message.Substring(5);
 
-                query = Database.VerifyPlayer(cropMessage);
+                response = Database.VerifyPlayer(cropMessage);
             }
             else if (message.StartsWith("salt"))
             {
                 cropMessage = message.Substring(4);
 
-                query = Database.fetchSalt(cropMessage);
+                response = Database.FetchSalt(cropMessage);
             }
+            //else if (message.StartsWith("match"))
+            //{
+            //    cropMessage = message.Substring(5);
+
+            //    response = MatchMaking.Process
+            //}
             else
             {
-                query = "Unknown Request";
+                response = "Unknown Request";
             }
-            sendResponse(client, query);
+
+            sendResponse(client, response);
         }
 
         public static void sendResponse(TcpClient client, string response)
@@ -83,7 +95,7 @@ namespace TetraClashServer
 
         static void TryPlayers(object state)
         {
-            matchmaking.TryMatchPlayers();
+            MatchMaking.TryMatchPlayers();
         }
     }
 }

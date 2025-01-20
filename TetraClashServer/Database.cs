@@ -85,7 +85,7 @@ namespace TetraClashServer
             }
         }
 
-        public static string fetchSalt(string username)
+        public static string FetchSalt(string username)
         {
             using (IDbConnection db = new SqlConnection(connectionString))
             {
@@ -141,20 +141,5 @@ namespace TetraClashServer
                 }
             }
         }
-
-        static string GenerateSalt()
-        {
-            byte[] saltBytes = new byte[16];
-            RandomNumberGenerator.Fill(saltBytes);
-            return Convert.ToBase64String(saltBytes);
-        }
-
-        static string HashPassword(string password, string salt)
-        {
-            string saltedPassword = password + salt;
-            byte[] hashBytes = SHA256.HashData(Encoding.UTF8.GetBytes(saltedPassword));
-            return Convert.ToBase64String(hashBytes);
-        }
-
     }
 }
