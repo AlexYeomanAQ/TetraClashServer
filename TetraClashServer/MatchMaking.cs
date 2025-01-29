@@ -25,9 +25,7 @@ namespace TetraClashServer
 
                 for (int i = 0; i < matchPlayers.Count; i++)
                 {
-
-                    Server.sendResponse(matchPlayers[i].Client, $"found:{matchID}");
-
+                    Server.sendResponse(matchPlayers[i].Client, $"found:{matchID}:{DateTimeOffset.UtcNow.ToUnixTimeSeconds()}");
                 }
             }
         }

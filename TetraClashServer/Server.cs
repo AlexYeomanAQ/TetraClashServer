@@ -21,7 +21,7 @@ namespace TetraClashServer
 
             queueTimer = new Timer(TryPlayers, null, 0, 500);
 
-            TcpListener server = new TcpListener(IPAddress.Any, 55);
+            TcpListener server = new TcpListener(IPAddress.Any, 12345);
             server.Start();
             Console.WriteLine("Server Online");
 
