@@ -29,6 +29,8 @@ namespace TetraClashServer
                 Salt NVARCHAR(MAX) NOT NULL
             );";
 
+            return true;
+
             using (IDbConnection db = new SqlConnection(connectionString))
             {
                 try
