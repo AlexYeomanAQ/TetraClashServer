@@ -25,7 +25,7 @@ namespace TetraClashServer
 
                 for (int i = 0; i < matchPlayers.Count; i++)
                 {
-                    Server.sendResponse(matchPlayers[i].Client, $"found:{matchID}:{DateTimeOffset.UtcNow.ToUnixTimeSeconds()}");
+                    Server.SendResponse(matchPlayers[i].Client, $"found:{matchID}:{DateTimeOffset.UtcNow.ToUnixTimeSeconds()}");
                 }
             }
         }
@@ -35,7 +35,7 @@ namespace TetraClashServer
             Queue.Add(player);
         }
 
-        public static void DeQueue(TcpClient client, string username)
+        public static void DeQueue(string username)
         {
             for (int i = 0; i < Queue.Count; i++)
             {
@@ -52,7 +52,7 @@ namespace TetraClashServer
             int matchID = ActiveMatches.Count() + 1;
             ActiveMatches.Add(matchID, match);
 
-            _ = Task.Run(match.StartAsync);
+            _ = Task.Run(match.MatchDialogue);
             return matchID;
         }
 

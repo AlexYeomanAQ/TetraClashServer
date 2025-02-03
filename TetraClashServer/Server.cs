@@ -3,16 +3,18 @@ using System.Net;
 using System.Net.Sockets;
 using System.Text;
 using System.Threading;
+using System.Threading.Tasks;
 using System.Collections.Generic;
 
 namespace TetraClashServer
 {
     class Server
     {
-        static Timer queueTimer;
-        static void Main()
+        static Timer? queueTimer;
+
+        static async Task Main()
         {
-            bool dbInit = Database.Initialize();
+            bool dbInit = await Database.Initialize();
 
             if (!dbInit)
             {
@@ -27,17 +29,41 @@ namespace TetraClashServer
 
             while (true)
             {
-                TcpClient client = server.AcceptTcpClient();
-                NetworkStream stream = client.GetStream();
-                byte[] buffer = new byte[1024];
-                int bytesRead = stream.Read(buffer, 0, buffer.Length);
-                string message = Encoding.UTF8.GetString(buffer, 0, bytesRead);
-                Console.WriteLine($"Received: {message}");
-                HandleResponse(client, message);
+                TcpClient client = await server.AcceptTcpClientAsync();
+                _ = Task.Run(() => HandleClient(client));
             }
         }
 
-        static void HandleResponse(TcpClient client, string message)
+        static async Task HandleClient(TcpClient client)
+        {
+            try
+            {
+                NetworkStream stream = client.GetStream();
+                byte[] buffer = new byte[1024];
+                int bytesRead = await stream.ReadAsync(buffer, 0, buffer.Length);
+
+                if (bytesRead == 0) return; // Client disconnected
+
+                string message = Encoding.UTF8.GetString(buffer, 0, bytesRead);
+                Console.WriteLine($"Received: {message}");
+
+                string response = await HandleResponse(client, message);
+
+                if (response == "Queue") return;
+
+                await SendResponse(client, response); // Async send
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error: {ex.Message}");
+            }
+            finally
+            {
+                client.Close(); // Close the client connection after processing
+            }
+        }
+
+        public static async Task<string> HandleResponse(TcpClient client, string message)
         {
             string cropMessage;
             string response = "";
@@ -45,52 +71,44 @@ namespace TetraClashServer
             if (message.StartsWith("search"))
             {
                 cropMessage = message.Substring(6);
-
                 MatchMaking.EnQueue(client, cropMessage);
+                response = "Queue";
+
             }
             else if (message.StartsWith("cancel"))
             {
                 cropMessage = message.Substring(6);
-                
-                MatchMaking.DeQueue(client, cropMessage);
+                MatchMaking.DeQueue(cropMessage);
+                response = "Success";
             }
             else if (message.StartsWith("create"))
             {
                 cropMessage = message.Substring(6);
-
-                response = Database.CreateAccount(cropMessage);
+                response = await Database.CreateAccount(cropMessage); // Use async DB method
             }
             else if (message.StartsWith("login"))
             {
                 cropMessage = message.Substring(5);
-
-                response = Database.VerifyPlayer(cropMessage);
+                response = await Database.VerifyPlayer(cropMessage); // Use async DB method
             }
             else if (message.StartsWith("salt"))
             {
                 cropMessage = message.Substring(4);
-
-                response = Database.FetchSalt(cropMessage);
+                response = await Database.FetchSalt(cropMessage); // Use async DB method
             }
-            //else if (message.StartsWith("match"))
-            //{
-            //    cropMessage = message.Substring(5);
-
-            //    response = MatchMaking.Process
-            //}
             else
             {
                 response = "Unknown Request";
             }
 
-            sendResponse(client, response);
+            return response;
         }
 
-        public static void sendResponse(TcpClient client, string response)
+        public static async Task SendResponse(TcpClient client, string response)
         {
             NetworkStream stream = client.GetStream();
             byte[] buffer = Encoding.UTF8.GetBytes(response);
-            stream.Write(buffer, 0, buffer.Length);
+            await stream.WriteAsync(buffer, 0, buffer.Length); // Async send
         }
 
         static void TryPlayers(object state)

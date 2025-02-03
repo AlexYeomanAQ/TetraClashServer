@@ -7,6 +7,7 @@ using System.Data;
 using System.Data.SqlClient;
 using Dapper;
 using System.Security.Cryptography;
+using System.Threading.Tasks;
 
 namespace TetraClashServer
 {
@@ -14,7 +15,7 @@ namespace TetraClashServer
     {
         protected const string connectionString = $"Server=localhost\\MSSQLSERVER01;Database=TetraClashTest;Trusted_Connection=True;";
 
-        public static bool Initialize()
+        public static async Task<bool> Initialize()
         {
             const string checkExistsQuery = @"
             SELECT COUNT(*) 
@@ -32,23 +33,23 @@ namespace TetraClashServer
             {
                 try
                 {
-                    int tableCount = db.QuerySingleOrDefault<int>(checkExistsQuery);
+                    int tableCount = await db.QuerySingleOrDefaultAsync<int>(checkExistsQuery);
                     if (tableCount == 0)
                     {
-                        db.Execute(createTableQuery);
+                        await db.ExecuteAsync(createTableQuery);
                     }
                     Console.WriteLine("Database initialized");
                     return true;
                 }
                 catch (Exception e)
                 {
-                    Console.WriteLine("Database fail to initialise: " + e);
+                    Console.WriteLine("Database failed to initialize: " + e);
                     return false;
                 }
             }
         }
 
-        public static string CreateAccount(string message)
+        public static async Task<string> CreateAccount(string message)
         {
             string[] args = message.Split(":");
             if (args.Length < 3)
@@ -67,13 +68,13 @@ namespace TetraClashServer
             {
                 try
                 {
-                    string existingUser = db.QuerySingleOrDefault<string>(checkQuery, new { Username = username });
+                    string existingUser = await db.QuerySingleOrDefaultAsync<string>(checkQuery, new { Username = username });
                     if (existingUser != null)
                     {
                         return "Player Exists";
                     }
 
-                    int rowsAffected = db.Execute(insertQuery, new { Username = username, Hash = hash, Salt = salt });
+                    int rowsAffected = await db.ExecuteAsync(insertQuery, new { Username = username, Hash = hash, Salt = salt });
                     Console.WriteLine($"{rowsAffected} row(s) inserted.");
                     return "Success";
                 }
@@ -85,23 +86,17 @@ namespace TetraClashServer
             }
         }
 
-        public static string FetchSalt(string username)
+        public static async Task<string> FetchSalt(string username)
         {
             using (IDbConnection db = new SqlConnection(connectionString))
             {
                 try
                 {
-                    db.Open();
-                    string query = $"SELECT Salt FROM Players WHERE Username = @Username";
+                    string query = "SELECT Salt FROM Players WHERE Username = @Username";
 
-                    var salt = db.QuerySingleOrDefault<string>(query, new { Username = username });
+                    var salt = await db.QuerySingleOrDefaultAsync<string>(query, new { Username = username });
 
-                    if (salt == null)
-                    {
-                        return "Username";
-                    }
-
-                    return salt;
+                    return salt ?? "Username";
                 }
                 catch (Exception e)
                 {
@@ -109,9 +104,15 @@ namespace TetraClashServer
                 }
             }
         }
-        public static string VerifyPlayer(string message)
+
+        public static async Task<string> VerifyPlayer(string message)
         {
             string[] args = message.Split(':');
+            if (args.Length < 2)
+            {
+                return "Invalid message format.";
+            }
+
             string username = args[0];
             string hashAttempt = args[1];
 
@@ -119,20 +120,11 @@ namespace TetraClashServer
             {
                 try
                 {
-                    db.Open();
+                    string query = "SELECT Hash FROM Players WHERE Username = @Username";
 
-                    string query = $"SELECT Hash FROM Players WHERE Username = @Username";
+                    string hash = await db.QuerySingleOrDefaultAsync<string>(query, new { Username = username });
 
-                    string hash = db.QuerySingle<string>(query, new {Username = username});
-
-                    if (hashAttempt == hash)
-                    {
-                        return "Success";
-                    }
-                    else
-                    {
-                        return "Password";
-                    }
+                    return hashAttempt == hash ? "Success" : "Password";
                 }
                 catch (Exception e)
                 {

@@ -12,21 +12,21 @@ public class Match
         Player2 = player2;
     }
 
-    public async Task StartAsync()
+    public async Task MatchDialogue()
     {
         Console.WriteLine($"Starting match: {Player1.Name} vs {Player2.Name}");
-        Server.sendResponse(Player1.Client, "Match started! You are playing against " + Player2.Name);
-        Server.sendResponse(Player2.Client, "Match started! You are playing against " + Player1.Name);
+        await Server.SendResponse(Player1.Client, "Match started! You are playing against " + Player2.Name);
+        await Server.SendResponse(Player2.Client, "Match started! You are playing against " + Player1.Name);
 
         await Task.Delay(1000);
         Console.WriteLine($"Match ended: {Player1.Name} vs {Player2.Name}");
-        Server.sendResponse(Player1.Client, "Match ended!");
-        Server.sendResponse(Player2.Client, "Match ended!");
+        await Server.SendResponse(Player1.Client, "Match ended!");
+        await Server.SendResponse(Player2.Client, "Match ended!");
     }
 
     public void HandleMessage(TcpClient client, string message)
     {
-        Server.sendResponse(client, "Message received: " + message);
+        Server.SendResponse(client, "Message received: " + message);
     }
 
     private string GetPlayerName(TcpClient client)
