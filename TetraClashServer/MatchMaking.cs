@@ -1,27 +1,19 @@
-﻿using System;
-using System.Net;
-using System.Net.Sockets;
-using System.Text;
-using System.Collections.Generic;
-using System.Data;
-using System.Data.SqlClient;
-using Dapper;
-using System.Xml.Linq;
-using System.Xml.Schema;
+﻿using System.Net.Sockets;
 
 namespace TetraClashServer
 {
     public class MatchMaking
     {
-        private List<Player> Queue = new List<Player>();
+        private List<Player> Queue;
         public Dictionary<int, Match> ActiveMatches = new Dictionary<int, Match>();
 
         private Server server;
         public MatchMaking(Server _server)
         {
             server = _server;
+            Queue = new List<Player>();
         }
-        public void TryMatchPlayers()
+        public async Task TryMatchPlayers()
         {
             foreach (var player in Queue)
             {
@@ -33,10 +25,12 @@ namespace TetraClashServer
                 Queue.RemoveRange(0, 2);
 
                 int matchID = CreateMatch(matchPlayers[0], matchPlayers[1]);
+                Console.WriteLine($"MatchID = {matchID}");
 
-                for (int i = 0; i < matchPlayers.Count; i++)
+                foreach (var player in matchPlayers)
                 {
-                    Server.SendResponse(matchPlayers[i].Client, $"found:{matchID}:{DateTimeOffset.UtcNow.ToUnixTimeSeconds()}");
+                    Console.WriteLine(player.Name);
+                    await Server.SendResponse(player.Client, $"found:{matchID}:{DateTimeOffset.UtcNow.ToUnixTimeSeconds()}");
                 }
             }
         }
@@ -52,7 +46,7 @@ namespace TetraClashServer
             {
                 if (Queue[i].Name == username)
                 {
-                    Queue.RemoveAt(i);
+                    Queue.Remove(Queue[i]);
                 }
             }
         }

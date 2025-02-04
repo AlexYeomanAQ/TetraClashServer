@@ -10,7 +10,6 @@ namespace TetraClashServer
 {
     public class Server
     {
-        static Timer? queueTimer;
         public MatchMaking matchmaking;
         public async Task Main()
         {
@@ -22,7 +21,7 @@ namespace TetraClashServer
                 Environment.Exit(0);
             }
 
-            queueTimer = new Timer(TryPlayers, null, 0, 500);
+            _ = StartMatchmakingLoop();
 
             TcpListener server = new TcpListener(IPAddress.Any, 12345);
             server.Start();
@@ -76,7 +75,8 @@ namespace TetraClashServer
             }
             else if (message.StartsWith("cancel"))
             {
-                cropMessage = message.Substring(6);
+                cropMessage = message.Substring(7);
+                await Console.Out.WriteLineAsync(cropMessage);
                 matchmaking.DeQueue(cropMessage);
                 response = "Success";
             }
@@ -115,9 +115,13 @@ namespace TetraClashServer
             await stream.WriteAsync(buffer, 0, buffer.Length); // Async send
         }
 
-        public void TryPlayers(object state)
+        public async Task StartMatchmakingLoop()
         {
-            matchmaking.TryMatchPlayers();
+            while (true)
+            {
+                await matchmaking.TryMatchPlayers();
+                await Task.Delay(500);
+            }
         }
     }
 }
