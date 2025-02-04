@@ -7,15 +7,26 @@ using System.Data;
 using System.Data.SqlClient;
 using Dapper;
 using System.Xml.Linq;
+using System.Xml.Schema;
 
 namespace TetraClashServer
 {
-    public static class MatchMaking
+    public class MatchMaking
     {
-        private static List<Player> Queue = new List<Player>();
-        private static Dictionary<int, Match> ActiveMatches = new Dictionary<int, Match>();
-        public static void TryMatchPlayers()
+        private List<Player> Queue = new List<Player>();
+        public Dictionary<int, Match> ActiveMatches = new Dictionary<int, Match>();
+
+        private Server server;
+        public MatchMaking(Server _server)
         {
+            server = _server;
+        }
+        public void TryMatchPlayers()
+        {
+            foreach (var player in Queue)
+            {
+                Console.WriteLine(player.Name);
+            }
             if (Queue.Count >= 2)
             {
                 List<Player> matchPlayers = Queue.GetRange(0, 2);
@@ -29,13 +40,13 @@ namespace TetraClashServer
                 }
             }
         }
-        public static void EnQueue(TcpClient client, string username)
+        public void EnQueue(TcpClient client, string username)
         {
             Player player = new Player(client, username);
             Queue.Add(player);
         }
 
-        public static void DeQueue(string username)
+        public void DeQueue(string username)
         {
             for (int i = 0; i < Queue.Count; i++)
             {
@@ -46,21 +57,22 @@ namespace TetraClashServer
             }
         }
 
-        public static int CreateMatch(Player player1, Player player2)
+        public int CreateMatch(Player player1, Player player2)
         {
             var match = new Match(player1, player2);
             int matchID = ActiveMatches.Count() + 1;
             ActiveMatches.Add(matchID, match);
-
-            _ = Task.Run(match.MatchDialogue);
             return matchID;
         }
 
-        public static void HandleMatchData(int matchID, TcpClient client, string message)
+        public async void HandleMatchData(TcpClient client, string message)
         {
+            string[] args = message.Split(':');
+            int matchID = int.Parse(args[0]);
+            string gridJson = args[1];
             if (ActiveMatches.ContainsKey(matchID))
             {
-                ActiveMatches[matchID].HandleMessage(client, message);
+                await ActiveMatches[matchID].HandleJson(client, gridJson);
             }
             else
             {

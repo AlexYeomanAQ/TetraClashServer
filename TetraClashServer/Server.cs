@@ -8,12 +8,13 @@ using System.Collections.Generic;
 
 namespace TetraClashServer
 {
-    class Server
+    public class Server
     {
         static Timer? queueTimer;
-
-        static async Task Main()
+        public MatchMaking matchmaking;
+        public async Task Main()
         {
+            matchmaking = new MatchMaking(this);
             bool dbInit = await Database.Initialize();
 
             if (!dbInit)
@@ -34,7 +35,7 @@ namespace TetraClashServer
             }
         }
 
-        static async Task HandleClient(TcpClient client)
+        public async Task HandleClient(TcpClient client)
         {
             try
             {
@@ -49,8 +50,6 @@ namespace TetraClashServer
 
                 string response = await HandleResponse(client, message);
 
-                if (response == "Queue") return;
-
                 await SendResponse(client, response); // Async send
             }
             catch (Exception ex)
@@ -63,22 +62,22 @@ namespace TetraClashServer
             }
         }
 
-        public static async Task<string> HandleResponse(TcpClient client, string message)
+        public async Task<string> HandleResponse(TcpClient client, string message)
         {
             string cropMessage;
             string response = "";
 
             if (message.StartsWith("search"))
             {
-                cropMessage = message.Substring(6);
-                MatchMaking.EnQueue(client, cropMessage);
+                cropMessage = message.Substring(7);
+                matchmaking.EnQueue(client, cropMessage);
                 response = "Queue";
 
             }
             else if (message.StartsWith("cancel"))
             {
                 cropMessage = message.Substring(6);
-                MatchMaking.DeQueue(cropMessage);
+                matchmaking.DeQueue(cropMessage);
                 response = "Success";
             }
             else if (message.StartsWith("create"))
@@ -96,6 +95,11 @@ namespace TetraClashServer
                 cropMessage = message.Substring(4);
                 response = await Database.FetchSalt(cropMessage); // Use async DB method
             }
+            else if (message.StartsWith("grid"))
+            {
+                cropMessage = message.Substring(4);
+                matchmaking.HandleMatchData(client, cropMessage);
+            }
             else
             {
                 response = "Unknown Request";
@@ -111,9 +115,9 @@ namespace TetraClashServer
             await stream.WriteAsync(buffer, 0, buffer.Length); // Async send
         }
 
-        static void TryPlayers(object state)
+        public void TryPlayers(object state)
         {
-            MatchMaking.TryMatchPlayers();
+            matchmaking.TryMatchPlayers();
         }
     }
 }

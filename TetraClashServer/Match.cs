@@ -24,15 +24,16 @@ public class Match
         await Server.SendResponse(Player2.Client, "Match ended!");
     }
 
-    public void HandleMessage(TcpClient client, string message)
+    public async Task HandleJson(TcpClient client, string gridJson)
     {
-        Server.SendResponse(client, "Message received: " + message);
+        TcpClient enemyClient = GetEnemyPlayerClient(client);
+        await Server.SendResponse(client, gridJson);
     }
 
-    private string GetPlayerName(TcpClient client)
+    private TcpClient GetEnemyPlayerClient(TcpClient client)
     {
-        if (client == Player1.Client) return Player1.Name;
-        if (client == Player2.Client) return Player2.Name;
-        return "Unknown Player";
+        if (client == Player1.Client) return Player2.Client;
+        if (client == Player2.Client) return Player1.Client;
+        return null;
     }
 }
