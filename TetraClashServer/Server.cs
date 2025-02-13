@@ -5,6 +5,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Collections.Generic;
+using System.Runtime.InteropServices;
 
 namespace TetraClashServer
 {
@@ -36,6 +37,7 @@ namespace TetraClashServer
 
         public async Task HandleClient(TcpClient client)
         {
+            string response = "";
             try
             {
                 NetworkStream stream = client.GetStream();
@@ -47,7 +49,7 @@ namespace TetraClashServer
                 string message = Encoding.UTF8.GetString(buffer, 0, bytesRead);
                 Console.WriteLine($"Received: {message}");
 
-                string response = await HandleResponse(client, message);
+                response = await HandleResponse(client, message);
 
                 await SendResponse(client, response); // Async send
             }
@@ -57,7 +59,10 @@ namespace TetraClashServer
             }
             finally
             {
-                client.Close(); // Close the client connection after processing
+                if (response != "Queue")
+                {
+                    client.Close();
+                }
             }
         }
 
@@ -110,16 +115,32 @@ namespace TetraClashServer
 
         public static async Task SendResponse(TcpClient client, string response)
         {
-            NetworkStream stream = client.GetStream();
-            byte[] buffer = Encoding.UTF8.GetBytes(response);
-            await stream.WriteAsync(buffer, 0, buffer.Length); // Async send
+            try
+            {
+                if (client == null || !client.Connected)
+                {
+                    Console.WriteLine("Client is not connected.");
+                    return;
+                }
+
+                using StreamWriter writer = new StreamWriter(client.GetStream(), Encoding.UTF8, leaveOpen: true);
+                await writer.WriteLineAsync(response);
+                await writer.FlushAsync();
+
+                Console.WriteLine($"Sent to {client.Client.RemoteEndPoint}: {response}");
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine($"Error sending response: {e.Message}");
+            }
         }
+
 
         public async Task StartMatchmakingLoop()
         {
             while (true)
             {
-                await matchmaking.TryMatchPlayers();
+                await matchmaking.MatchMakingLoop();
                 await Task.Delay(500);
             }
         }

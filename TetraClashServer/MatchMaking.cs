@@ -13,7 +13,7 @@ namespace TetraClashServer
             server = _server;
             Queue = new List<Player>();
         }
-        public async Task TryMatchPlayers()
+        public async Task MatchMakingLoop()
         {
             foreach (var player in Queue)
             {
@@ -24,14 +24,8 @@ namespace TetraClashServer
                 List<Player> matchPlayers = Queue.GetRange(0, 2);
                 Queue.RemoveRange(0, 2);
 
-                int matchID = CreateMatch(matchPlayers[0], matchPlayers[1]);
+                int matchID = await CreateMatch(matchPlayers[0], matchPlayers[1]);
                 Console.WriteLine($"MatchID = {matchID}");
-
-                foreach (var player in matchPlayers)
-                {
-                    Console.WriteLine(player.Name);
-                    await Server.SendResponse(player.Client, $"found:{matchID}:{DateTimeOffset.UtcNow.ToUnixTimeSeconds()}");
-                }
             }
         }
         public void EnQueue(TcpClient client, string username)
@@ -51,10 +45,11 @@ namespace TetraClashServer
             }
         }
 
-        public int CreateMatch(Player player1, Player player2)
+        public async Task<int> CreateMatch(Player player1, Player player2)
         {
-            var match = new Match(player1, player2);
             int matchID = ActiveMatches.Count() + 1;
+            Match match = new Match(matchID, player1, player2);
+            await match.MatchDialogue();
             ActiveMatches.Add(matchID, match);
             return matchID;
         }

@@ -3,31 +3,31 @@ using TetraClashServer;
 
 public class Match
 {
+    private int ID { get; }
     private Player Player1 { get; }
     private Player Player2 { get; }
 
-    public Match(Player player1, Player player2)
+    public Match(int id, Player player1, Player player2)
     {
+        ID = id;
         Player1 = player1;
         Player2 = player2;
     }
 
     public async Task MatchDialogue()
     {
-        Console.WriteLine($"Starting match: {Player1.Name} vs {Player2.Name}");
-        await Server.SendResponse(Player1.Client, "Match started! You are playing against " + Player2.Name);
-        await Server.SendResponse(Player2.Client, "Match started! You are playing against " + Player1.Name);
-
-        await Task.Delay(1000);
-        Console.WriteLine($"Match ended: {Player1.Name} vs {Player2.Name}");
-        await Server.SendResponse(Player1.Client, "Match ended!");
-        await Server.SendResponse(Player2.Client, "Match ended!");
+        Console.WriteLine("test");
+        string responseString = $"found{ID}:{DateTimeOffset.UtcNow.ToUnixTimeSeconds()}";
+        await Task.Delay(5000);
+        await Server.SendResponse(Player1.Client, responseString);
+        await Server.SendResponse(Player2.Client, responseString);
+        await Task.Delay(5000);
     }
 
     public async Task HandleJson(TcpClient client, string gridJson)
     {
         TcpClient enemyClient = GetEnemyPlayerClient(client);
-        await Server.SendResponse(client, gridJson);
+        await Server.SendResponse(enemyClient, gridJson);
     }
 
     private TcpClient GetEnemyPlayerClient(TcpClient client)
