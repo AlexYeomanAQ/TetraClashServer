@@ -1,21 +1,14 @@
-﻿using System;
-using System.Net;
-using System.Net.Sockets;
-using System.Text;
-using System.Collections.Generic;
-using System.Data;
+﻿using System.Data;
 using System.Data.SqlClient;
 using Dapper;
-using System.Security.Cryptography;
-using System.Threading.Tasks;
 
-namespace TetraClashServer
+namespace DedicatedGameServer
 {
     class Database
     {
         protected const string connectionString = $"Server=localhost\\MSSQLSERVER01;Database=TetraClashTest;Trusted_Connection=True;";
 
-        public static async Task<bool> Initialize()
+        public static bool Initialize()
         {
             const string checkExistsQuery = @"
             SELECT COUNT(*) 
@@ -29,16 +22,14 @@ namespace TetraClashServer
                 Salt NVARCHAR(MAX) NOT NULL
             );";
 
-            return true;
-
             using (IDbConnection db = new SqlConnection(connectionString))
             {
                 try
                 {
-                    int tableCount = await db.QuerySingleOrDefaultAsync<int>(checkExistsQuery);
+                    int tableCount = db.QuerySingleOrDefault<int>(checkExistsQuery);
                     if (tableCount == 0)
                     {
-                        await db.ExecuteAsync(createTableQuery);
+                        db.Execute(createTableQuery);
                     }
                     Console.WriteLine("Database initialized");
                     return true;
@@ -70,7 +61,7 @@ namespace TetraClashServer
             {
                 try
                 {
-                    string existingUser = await db.QuerySingleOrDefaultAsync<string>(checkQuery, new { Username = username });
+                    var existingUser = await db.QuerySingleOrDefaultAsync<string>(checkQuery, new { Username = username });
                     if (existingUser != null)
                     {
                         return "Player Exists";
@@ -124,7 +115,7 @@ namespace TetraClashServer
                 {
                     string query = "SELECT Hash FROM Players WHERE Username = @Username";
 
-                    string hash = await db.QuerySingleOrDefaultAsync<string>(query, new { Username = username });
+                    var hash = await db.QuerySingleOrDefaultAsync<string>(query, new { Username = username });
 
                     return hashAttempt == hash ? "Success" : "Password";
                 }
