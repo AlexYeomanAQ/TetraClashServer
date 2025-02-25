@@ -75,7 +75,6 @@ namespace DedicatedGameServer
                 }
 
                 string message = Encoding.UTF8.GetString(buffer, 0, bytesRead).Trim();
-                Console.WriteLine("Received: " + message);
 
                 string args;
                 string response = "";
@@ -194,7 +193,6 @@ namespace DedicatedGameServer
             try
             {
                 NetworkStream stream = client.GetStream();
-                Console.WriteLine($"test");
                 string response = $"GRID_UPDATE:{gridData}";
                 byte[] responseBytes = Encoding.UTF8.GetBytes(response);
                 await stream.WriteAsync(responseBytes, 0, responseBytes.Length);
