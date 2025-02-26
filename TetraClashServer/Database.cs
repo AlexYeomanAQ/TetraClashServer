@@ -2,7 +2,7 @@
 using System.Data.SqlClient;
 using Dapper;
 
-namespace DedicatedGameServer
+namespace TetraClashServer
 {
     class Database
     {

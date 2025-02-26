@@ -5,7 +5,7 @@ using System.Net.Sockets;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace ServerTest2
+namespace TetraClashServer
 {
     public static class Client
     {

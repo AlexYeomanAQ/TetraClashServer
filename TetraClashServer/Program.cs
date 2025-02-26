@@ -8,8 +8,9 @@ using System.Runtime.ConstrainedExecution;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
+using TetraClashServer;
 
-namespace DedicatedGameServer
+namespace TetraClashServer
 {
     public class Match
     {
@@ -21,8 +22,7 @@ namespace DedicatedGameServer
     {
         private TcpListener _listener;
         // Thread-safe queue to hold waiting players
-        private ConcurrentQueue<TcpClient> _waitingPlayers = new ConcurrentQueue<TcpClient>();
-        private ConcurrentDictionary<TcpClient, Match> _clientMatches = new ConcurrentDictionary<TcpClient, Match>();
+        private Matchmaking matchmaking;
 
         public void Start()
         {
@@ -30,6 +30,7 @@ namespace DedicatedGameServer
             {
                 Environment.Exit(0);
             }
+            matchmaking = new Matchmaking();
             // Listen on any IP address on port 5000
             _listener = new TcpListener(IPAddress.Any, 5000);
             _listener.Start(); //Starts the process to listen to incoming messages/requests
@@ -81,11 +82,11 @@ namespace DedicatedGameServer
 
                 if (message.StartsWith("search"))
                 {
-                    HandleMatchmaking(client);
+                    matchmaking.HandleMatchmaking(client);
                 }
                 else if (message.StartsWith("cancel"))
                 {
-                    response = RemovePlayer(client);
+                    response = matchmaking.RemovePlayer(client);
                 }
                 else if (message.StartsWith("create"))
                 {
@@ -116,67 +117,13 @@ namespace DedicatedGameServer
                 }
             }
 
-            _clientMatches.TryRemove(client, out _);
+            matchmaking._clientMatches.TryRemove(client, out _);
             client.Close();
-        }
-
-        private async Task HandleMatchmaking(TcpClient client)
-        {
-            _waitingPlayers.Enqueue(client);
-            Console.WriteLine("Player added to matchmaking queue.");
-
-            if (_waitingPlayers.Count >= 2)
-            {
-                if (_waitingPlayers.TryDequeue(out TcpClient player1) &&
-                    _waitingPlayers.TryDequeue(out TcpClient player2))
-                {
-                    string matchID = ((int)DateTimeOffset.UtcNow.ToUnixTimeSeconds()).ToString();
-                    Console.WriteLine($"Match created: {matchID}");
-
-                    Match match = new Match { MatchID = matchID, Player1 = player1, Player2 = player2 };
-                    _clientMatches[player1] = match;
-                    _clientMatches[player2] = match;
-
-                    string response = $"MATCH_FOUND:{matchID}";
-                    await Client.SendMessage(player1, response);
-                    await Client.SendMessage(player2, response);
-                }
-            }
-        }
-
-        private string RemovePlayer(TcpClient client)
-        {
-            // Create a temporary queue to hold players who are still searching.
-            ConcurrentQueue<TcpClient> tempQueue = new ConcurrentQueue<TcpClient>();
-
-            // Rebuild the queue without the canceled client.
-            try
-            {
-                while (_waitingPlayers.TryDequeue(out TcpClient waitingClient))
-                {
-                    if (waitingClient != client)
-                    {
-                        tempQueue.Enqueue(waitingClient);
-                    }
-                    else
-                    {
-                        Console.WriteLine("Player removed from matchmaking queue.");
-                    }
-                }
-
-                // Replace the original queue with the filtered one.
-                _waitingPlayers = tempQueue;
-                return "Success";
-            }
-            catch (Exception e)
-            {
-                return e.Message;
-            }
         }
 
         private async void HandleMatchUpdate(TcpClient sender, string gridData)
         {
-            if (_clientMatches.TryGetValue(sender, out Match match))
+            if (matchmaking._clientMatches.TryGetValue(sender, out Match match))
             {
                 // Determine the other player in the match.
                 TcpClient receiver = (match.Player1 == sender) ? match.Player2 : match.Player1;
@@ -207,7 +154,7 @@ namespace DedicatedGameServer
     }
     class Program
     {
-        static void Main(string[] args)
+        static void Main()
         {
             Server server = new Server();
             server.Start();
