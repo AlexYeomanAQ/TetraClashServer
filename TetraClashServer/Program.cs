@@ -1,5 +1,4 @@
-﻿using ServerTest2;
-using System;
+﻿using System;
 using System.Collections.Concurrent;
 using System.IO;
 using System.Net;
@@ -82,7 +81,7 @@ namespace TetraClashServer
 
                 if (message.StartsWith("search"))
                 {
-                    matchmaking.HandleMatchmaking(client);
+                    await matchmaking.HandleMatchmaking(client);
                 }
                 else if (message.StartsWith("cancel"))
                 {
@@ -103,10 +102,12 @@ namespace TetraClashServer
                     args = message.Substring(4);
                     response = await Database.FetchSalt(args);
                 }
-                else if (message.StartsWith("match:", StringComparison.InvariantCultureIgnoreCase))
+                else if (message.StartsWith("match"))
                 {
-                    HandleMatchUpdate(client, message.Substring("match:".Length));
+                    args = message.Substring(5);
+                    HandleMatchUpdate(client, args);
                 }
+                else if (message.StartsWith(""))
                 else
                 {
                     response = "Unknown Message";
