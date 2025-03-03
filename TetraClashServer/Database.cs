@@ -36,7 +36,7 @@ namespace TetraClashServer
             Server = server;
         }
 
-        public async Task<string> CreateAccount(string message)
+        public async Task<string> CreateAccount(TcpClient client, string message)
         {
             string[] args = message.Split(":");
             if (args.Length < 3)
@@ -61,7 +61,8 @@ namespace TetraClashServer
 
                 int rowsAffected = await DB.ExecuteAsync(insertQuery, new { Username = username, Hash = hash, Salt = salt });
                 Console.WriteLine($"{rowsAffected} row(s) inserted.");
-                return $"Success:";
+                Server.LoggedInPlayers.Add(client, username);
+                return $"Success:1000";
             }
             catch (Exception e)
             {
@@ -124,7 +125,7 @@ namespace TetraClashServer
                 return e.Message;
             }
         }
-        public static async Task<int> CalculateEloChange(string winnerName, string loserName)
+        public async Task<int> CalculateEloChange(string winnerName, string loserName)
         {
             // Query to fetch a single rating value.
             string query = "SELECT Rating FROM Players WHERE Username = @Username";

@@ -27,16 +27,16 @@ namespace TetraClashServer
         public Dictionary<TcpClient, string> LoggedInPlayers = new Dictionary<TcpClient, string>();
         public void Start()
         {
-            try
-            {
-                database = new Database(this);
-            }
-            catch
-            {
-                Console.WriteLine("Failed to initialize, press enter to exit.");
-                Console.ReadLine();
-                Environment.Exit(0);
-            }
+            //try
+            //{
+            //    database = new Database(this);
+            //}
+            //catch
+            //{
+            //    Console.WriteLine("Failed to initialize, press enter to exit.");
+            //    Console.ReadLine();
+            //    Environment.Exit(0);
+            //}
             matchmaking = new Matchmaking();
             // Listen on any IP address on port 5000
             _listener = new TcpListener(IPAddress.Any, 5000);
@@ -98,7 +98,7 @@ namespace TetraClashServer
                 else if (message.StartsWith("create"))
                 {
                     args = message.Substring(6);
-                    response = await database.CreateAccount(args);
+                    response = await database.CreateAccount(client, args);
                 }
                 else if (message.StartsWith("login"))
                 {
