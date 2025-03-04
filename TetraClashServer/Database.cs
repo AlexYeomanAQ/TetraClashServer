@@ -109,8 +109,12 @@ namespace TetraClashServer
                     int rating = result.Rating;
                     if (hashAttempt == hash)
                     {
+                        if (Server.LoggedInPlayers.Values.ToArray().Contains(username))
+                        {
+                            return $"Logged In";
+                        }
                         Server.LoggedInPlayers.Add(client, username);
-                        return $"Success:{rating}";
+                        return $"Success{rating}";
                     }
                     else
                     {
@@ -125,37 +129,48 @@ namespace TetraClashServer
                 return e.Message;
             }
         }
-        public async Task<int> CalculateEloChange(string winnerName, string loserName)
+        public async Task<int> CalculateEloChange(string winnerName, string loserName, bool tied = false)
         {
-            // Query to fetch a single rating value.
-            string query = "SELECT Rating FROM Players WHERE Username = @Username";
+            string query = "SELECT Rating FROM Players WHERE Username = @Username"; // Query to fetch a single rating value.
 
-            // Fetch the winner's rating.
-            int winnerRating = await DB.QuerySingleOrDefaultAsync<int>(query, new { Username = winnerName });
+            int winnerRating = await DB.QuerySingleOrDefaultAsync<int>(query, new { Username = winnerName }); // Fetch the winner's rating.
+            int loserRating = await DB.QuerySingleOrDefaultAsync<int>(query, new { Username = loserName }); // Fetch the loser's rating.
 
-            // Fetch the loser's rating.
-            int loserRating = await DB.QuerySingleOrDefaultAsync<int>(query, new { Username = loserName });
+            double ratingDifference = winnerRating - loserRating; // Compute the rating difference.
 
-            // Optionally, check if either rating was not found.
-            if (winnerRating == default(int) || loserRating == default(int))
-            {
-                throw new Exception("Could not find rating for one or both users.");
-            }
+            ratingDifference = Math.Max(-1000, Math.Min(1000, ratingDifference)); // Cap the difference to ±1000 rating points.
 
-            // Compute the rating difference.
-            double ratingDifference = winnerRating - loserRating;
+            int baseVal = tied ? 0 : 30; //If tied, base is 0, else is 30
+            double adjustment = baseVal - (ratingDifference / 100); // Base points, subtract/add 10 points per 1000 points difference.
 
-            // Cap the difference to ±1000 rating points.
-            ratingDifference = Math.Max(-1000, Math.Min(1000, ratingDifference));
+            // Clamp the adjustment 10 above or below baseval, to prevent large swings for big rating differtences.
 
-            // Calculate the adjustment:
-            // Base 30 points, subtract/add 10 points per 1000 points difference.
-            double adjustment = 30.0 - ((ratingDifference / 1000.0) * 10.0);
+            adjustment = Math.Max(baseVal-10, Math.Min(adjustment, baseVal+10));
 
-            // Clamp the adjustment between 20 (minimum win) and 40 (big upset bonus).
-            adjustment = Math.Max(20, Math.Min(adjustment, 40));
+            UpdateRatings(winnerName, loserName, (int)Math.Round(adjustment));
 
             return (int)Math.Round(adjustment);
+        }
+
+        public async Task UpdateRatings(string winnerName, string loserName, int adjustment)
+        {
+            string query = @"
+            UPDATE Players
+            SET rating = 
+                CASE 
+                    WHEN Username = @winnerName THEN rating + @adjustment
+                    WHEN Username = @loserName THEN rating - @adjustment
+                END
+            WHERE Username IN (@winnerName, @loserName);";
+
+            try
+            {
+                await DB.ExecuteAsync(query, new { winnerName, loserName, adjustment });
+            }
+            catch (Exception ex)
+            {
+                await Console.Out.WriteLineAsync("Unknown Error: " +ex );
+            }
         }
     }
 }

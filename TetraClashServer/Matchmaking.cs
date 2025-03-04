@@ -10,9 +10,15 @@ namespace TetraClashServer
 {
     public class Matchmaking
     {
+        private Server server;
+
         private ConcurrentQueue<TcpClient> _waitingPlayers = new ConcurrentQueue<TcpClient>();
         public ConcurrentDictionary<TcpClient, Match> _clientMatches = new ConcurrentDictionary<TcpClient, Match>();
 
+        public Matchmaking(Server server)
+        {
+            this.server = server;
+        }
         public async Task HandleMatchmaking(TcpClient client)
         {
             _waitingPlayers.Enqueue(client);
@@ -29,9 +35,9 @@ namespace TetraClashServer
                     _clientMatches[player1] = match;
                     _clientMatches[player2] = match;
 
-                    string response = $"MATCH_FOUND:{matchID}";
-                    await Client.SendMessage(player1, response);
-                    await Client.SendMessage(player2, response);
+                    string response = $"MATCH_FOUND:{matchID}:";
+                    await Client.SendMessage(player1, response + server.LoggedInPlayers[player2]);
+                    await Client.SendMessage(player2, response + server.LoggedInPlayers[player1]); ;
                 }
             }
         }
