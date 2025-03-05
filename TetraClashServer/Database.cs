@@ -19,7 +19,7 @@ namespace TetraClashServer
             FROM INFORMATION_SCHEMA.TABLES 
             WHERE TABLE_NAME = 'Players'";
 
-            const string createTableQuery = @"
+            const string createPlayerTableQuery = @"
             CREATE TABLE Players (
                 Username NVARCHAR(50) NOT NULL PRIMARY KEY,
                 Hash NVARCHAR(MAX) NOT NULL,
@@ -27,11 +27,20 @@ namespace TetraClashServer
                 Rating INT NOT NULL DEFAULT 1000
             );";
 
+            const string createHighscoreTableQuery = @"
+            CREATE TABLE Highscores (
+                Username NVARCHAR(50) NOT NULL,
+                Date DATETIME NOT NULL DEFAULT GETDATE(),
+                Score INT NOT NULL,
+                PRIMARY KEY (Username, Date),
+                FOREIGN KEY (Username) REFERENCES Players(Username)
+            );";
+
 
             int tableCount = DB.QuerySingleOrDefault<int>(checkExistsQuery);
             if (tableCount == 0)
             {
-                DB.Execute(createTableQuery);
+                DB.Execute(createPlayerTableQuery);
             }
             Server = server;
         }
@@ -171,6 +180,39 @@ namespace TetraClashServer
             {
                 await Console.Out.WriteLineAsync("Unknown Error: " +ex );
             }
+        }
+
+        public void UpdateHighscore(string username, int score)
+        {
+            List<(int Score, DateTime Date)> currentHighScores = FetchHighscores(username);
+            if (currentHighScores.Count() == 10)
+            {
+                var lowestScore = currentHighScores[9];
+                if (lowestScore.Score < score)
+                {
+                    string removeQuery = @"
+                        DELETE FROM Highscores 
+                        WHERE Username = @Username AND Score = @LowestScore AND Date = @LowestScoreDate";
+
+                    DB.Execute(removeQuery, new { Username = username, LowestScore = lowestScore.Score, LowestScoreDate = lowestScore.Date });
+                }
+            }
+            const string insertHighscoreQuery = @"
+            INSERT INTO Highscores (Username, Score) 
+            VALUES (@Username, @Score)";
+
+            DB.Execute(insertHighscoreQuery, new { Username = username, Score = score });
+        }
+
+        public List<(int Score, DateTime Date)> FetchHighscores(string username)
+        {
+            const string fetchHighscoresQuery = @"
+                SELECT Score, Date 
+                FROM Highscores 
+                WHERE Username = @Username 
+                ORDER BY Score DESC";
+
+            return DB.Query<(int Score, DateTime Date)>(fetchHighscoresQuery, new { Username = username }).ToList();
         }
     }
 }

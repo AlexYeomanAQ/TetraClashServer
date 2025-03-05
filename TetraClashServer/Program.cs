@@ -118,8 +118,15 @@ namespace TetraClashServer
                     HandleMatchUpdate(client, args);
                 }
                 else if (message.StartsWith("lose"))
-                {
+                {   
+                    args = message.Substring(4);
                     HandleMatchEnd(client);
+                    database.UpdateHighscore(LoggedInPlayers[client], int.Parse(args));
+                }
+                else if (message.StartsWith("score"))
+                {
+                    args = message.Substring(5);
+                    database.UpdateHighscore(LoggedInPlayers[client], int.Parse(args));
                 }
                 else if (message.StartsWith("time"))
                 {
@@ -216,16 +223,8 @@ namespace TetraClashServer
                         int adjustment = await database.CalculateEloChange(LoggedInPlayers[winner], LoggedInPlayers[loser]);
                         if (match.Player1Score == match.Player2Score)
                         {
-                            if (adjustment > 0)
-                            {
-                                await Client.SendMessage(loser, $"MATCH_TIE_WIN:{adjustment}");
-                                await Client.SendMessage(winner, $"MATCH_TIE_LOSE:{adjustment}");
-                            }
-                            else
-                            {
-                                await Client.SendMessage(winner, $"MATCH_TIE_WIN:{adjustment}");
-                                await Client.SendMessage(loser, $"MATCH_TIE_LOSE:{adjustment}");
-                            }
+                            await Client.SendMessage(adjustment > 0 ? loser : winner, $"MATCH_TIE_WIN:{adjustment}");
+                            await Client.SendMessage(adjustment > 0 ? winner : loser, $"MATCH_TIE_LOSE:{adjustment}");
                         }
                         else
                         {
