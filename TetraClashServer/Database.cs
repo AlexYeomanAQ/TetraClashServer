@@ -182,7 +182,7 @@ namespace TetraClashServer
             }
         }
 
-        public void UpdateHighscore(string username, int score)
+        public async Task UpdateHighscore(string username, int score)
         {
             List<(int Score, DateTime Date)> currentHighScores = FetchHighscores(username);
             if (currentHighScores.Count() == 10)
@@ -207,12 +207,51 @@ namespace TetraClashServer
         public List<(int Score, DateTime Date)> FetchHighscores(string username)
         {
             const string fetchHighscoresQuery = @"
-                SELECT Score, Date 
-                FROM Highscores 
-                WHERE Username = @Username 
-                ORDER BY Score DESC";
+            SELECT Score, Date 
+            FROM Highscores 
+            WHERE Username = @Username";
 
-            return DB.Query<(int Score, DateTime Date)>(fetchHighscoresQuery, new { Username = username }).ToList();
+            var highscores = DB.Query<(int Score, DateTime Date)>(fetchHighscoresQuery, new { Username = username }).ToList();
+            return MergeSortHighscores(highscores);
+        }
+
+        private List<(int Score, DateTime Date)> MergeSortHighscores(List<(int Score, DateTime Date)> highscores)
+        {
+            if (highscores.Count <= 1) return highscores;
+
+            int mid = highscores.Count / 2;
+            var left = highscores.GetRange(0, mid);
+            var right = highscores.GetRange(mid, highscores.Count - mid);
+
+            left = MergeSortHighscores(left);
+            right = MergeSortHighscores(right);
+
+            return Merge(left, right);
+        }
+
+        private List<(int Score, DateTime Date)> Merge(List<(int Score, DateTime Date)> left, List<(int Score, DateTime Date)> right)
+        {
+            var result = new List<(int Score, DateTime Date)>();
+            int leftIndex = 0, rightIndex = 0;
+
+            while (leftIndex < left.Count && rightIndex < right.Count)
+            {
+                if (left[leftIndex].Score > right[rightIndex].Score)
+                {
+                    result.Add(left[leftIndex]);
+                    leftIndex++;
+                }
+                else
+                {
+                    result.Add(right[rightIndex]);
+                    rightIndex++;
+                }
+            }
+
+            result.AddRange(left.GetRange(leftIndex, left.Count - leftIndex));
+            result.AddRange(right.GetRange(rightIndex, right.Count - rightIndex));
+
+            return result;
         }
     }
 }

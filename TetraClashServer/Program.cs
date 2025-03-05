@@ -5,6 +5,7 @@ using System.Net;
 using System.Net.Sockets;
 using System.Runtime.ConstrainedExecution;
 using System.Text;
+using System.Text.Json;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using TetraClashServer;
@@ -17,8 +18,8 @@ namespace TetraClashServer
         public TcpClient Player1 { get; set; }
         public TcpClient Player2 { get; set; }
 
-        public int? Player1Score { get; set; }
-        public int? Player2Score { get; set; }
+        public int Player1Score { get; set; }
+        public int Player2Score { get; set; }
     }
     public class Server
     {
@@ -126,7 +127,15 @@ namespace TetraClashServer
                 else if (message.StartsWith("score"))
                 {
                     args = message.Substring(5);
-                    database.UpdateHighscore(LoggedInPlayers[client], int.Parse(args));
+                    if (LoggedInPlayers.ContainsKey(client))
+                    {
+                        database.UpdateHighscore(LoggedInPlayers[client], int.Parse(args));
+                    }
+                }
+                else if (message.StartsWith("highscores"))
+                {
+                    args = message.Substring(9);
+                    response = JsonSerializer.Serialize(database.FetchHighscores(args));
                 }
                 else if (message.StartsWith("time"))
                 {
@@ -221,6 +230,8 @@ namespace TetraClashServer
                         matchmaking._clientMatches.TryRemove(winner, out _);
                         matchmaking._clientMatches.TryRemove(loser, out _);
                         int adjustment = await database.CalculateEloChange(LoggedInPlayers[winner], LoggedInPlayers[loser]);
+                        await database.UpdateHighscore(LoggedInPlayers[match.Player1], match.Player1Score);
+                        await database.UpdateHighscore(LoggedInPlayers[match.Player2], match.Player2Score);
                         if (match.Player1Score == match.Player2Score)
                         {
                             await Client.SendMessage(adjustment > 0 ? loser : winner, $"MATCH_TIE_WIN:{adjustment}");
