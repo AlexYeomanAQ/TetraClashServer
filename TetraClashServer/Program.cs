@@ -122,19 +122,20 @@ namespace TetraClashServer
                 {   
                     args = message.Substring(4);
                     HandleMatchEnd(client);
-                    database.UpdateHighscore(LoggedInPlayers[client], int.Parse(args));
+                    await database.UpdateHighscore(LoggedInPlayers[client], int.Parse(args));
                 }
                 else if (message.StartsWith("score"))
                 {
                     args = message.Substring(5);
                     if (LoggedInPlayers.ContainsKey(client))
                     {
-                        database.UpdateHighscore(LoggedInPlayers[client], int.Parse(args));
+                        await database.UpdateHighscore(LoggedInPlayers[client], int.Parse(args));
                     }
                 }
                 else if (message.StartsWith("highscores"))
                 {
-                    args = message.Substring(9);
+                    args = message.Substring(10);
+                    await Console.Out.WriteLineAsync(args);
                     response = JsonSerializer.Serialize(database.FetchHighscores(args));
                 }
                 else if (message.StartsWith("time"))

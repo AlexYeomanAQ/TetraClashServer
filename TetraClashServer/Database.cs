@@ -7,7 +7,7 @@ namespace TetraClashServer
 {
     public class Database
     {
-        protected const string connectionString = $"Server=localhost\\MSSQLSERVER01;Database=TetraClash;Trusted_Connection=True;";
+        protected const string connectionString = $"Server=localhost\\MSSQLSERVER01;Database=TetraClash;Trusted_Connection=True;MultipleActiveResultSets=True";
         private IDbConnection DB;
 
         private Server Server;
@@ -154,9 +154,9 @@ namespace TetraClashServer
 
             // Clamp the adjustment 10 above or below baseval, to prevent large swings for big rating differtences.
 
-            adjustment = Math.Max(baseVal-10, Math.Min(adjustment, baseVal+10));
+            adjustment = Math.Max(baseVal - 10, Math.Min(adjustment, baseVal + 10));
 
-            UpdateRatings(winnerName, loserName, (int)Math.Round(adjustment));
+            await UpdateRatings(winnerName, loserName, (int)Math.Round(adjustment));
 
             return (int)Math.Round(adjustment);
         }
@@ -206,13 +206,21 @@ namespace TetraClashServer
 
         public List<(int Score, DateTime Date)> FetchHighscores(string username)
         {
-            const string fetchHighscoresQuery = @"
+            try
+            {
+                const string fetchHighscoresQuery = @"
             SELECT Score, Date 
             FROM Highscores 
             WHERE Username = @Username";
 
-            var highscores = DB.Query<(int Score, DateTime Date)>(fetchHighscoresQuery, new { Username = username }).ToList();
-            return MergeSortHighscores(highscores);
+                var highscores = DB.Query<(int Score, DateTime Date)>(fetchHighscoresQuery, new { Username = username }).ToList();
+                return MergeSortHighscores(highscores);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex.Message);
+                return new List<(int Score, DateTime Date)>();
+            }
         }
 
         private List<(int Score, DateTime Date)> MergeSortHighscores(List<(int Score, DateTime Date)> highscores)
