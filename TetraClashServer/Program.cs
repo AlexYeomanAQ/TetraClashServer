@@ -5,15 +5,6 @@ using System.Text.Json;
 
 namespace TetraClashServer
 {
-    public class Match
-    {
-        public string MatchID { get; set; }
-        public TcpClient Player1 { get; set; }
-        public TcpClient Player2 { get; set; }
-
-        public int Player1Score { get; set; }
-        public int Player2Score { get; set; }
-    }
     public class Server
     {
         private TcpListener _listener;
@@ -117,6 +108,10 @@ namespace TetraClashServer
                     HandleMatchEnd(client);
                     await database.UpdateHighscore(LoggedInPlayers[client], int.Parse(args));
                 }
+                else if (message.StartsWith("time"))
+                {
+                    HandleMatchEndTimer(client, message.Substring(4));
+                }
                 else if (message.StartsWith("score"))
                 {
                     args = message.Substring(5);
@@ -130,10 +125,6 @@ namespace TetraClashServer
                     args = message.Substring(10);
                     await Console.Out.WriteLineAsync(args);
                     response = JsonSerializer.Serialize(database.FetchHighscores(args));
-                }
-                else if (message.StartsWith("time"))
-                {
-                    HandleMatchEndTimer(client, message.Substring(4));
                 }
                 else
                 {

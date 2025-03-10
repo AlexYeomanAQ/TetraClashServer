@@ -5,6 +5,15 @@ using Dapper;
 
 namespace TetraClashServer
 {
+    public class Match
+    {
+        public string MatchID { get; set; }
+        public TcpClient Player1 { get; set; }
+        public TcpClient Player2 { get; set; }
+
+        public int Player1Score { get; set; }
+        public int Player2Score { get; set; }
+    }
     public class Database
     {
         protected const string connectionString = $"Server=localhost\\MSSQLSERVER01;Database=TetraClash;Trusted_Connection=True;MultipleActiveResultSets=True";
@@ -184,7 +193,7 @@ namespace TetraClashServer
 
         public async Task UpdateHighscore(string username, int score)
         {
-            List<(int Score, DateTime Date)> currentHighScores = FetchHighscores(username);
+            List<(int Score, string Date)> currentHighScores = FetchHighscores(username);
             if (currentHighScores.Count() == 10)
             {
                 var lowestScore = currentHighScores[9];
@@ -204,7 +213,7 @@ namespace TetraClashServer
             DB.Execute(insertHighscoreQuery, new { Username = username, Score = score });
         }
 
-        public List<(int Score, DateTime Date)> FetchHighscores(string username)
+        public List<(int Score, string Date)> FetchHighscores(string username)
         {
             try
             {
@@ -213,17 +222,17 @@ namespace TetraClashServer
             FROM Highscores 
             WHERE Username = @Username";
 
-                var highscores = DB.Query<(int Score, DateTime Date)>(fetchHighscoresQuery, new { Username = username }).ToList();
+                var highscores = DB.Query<(int Score, string Date)>(fetchHighscoresQuery, new { Username = username }).ToList();
                 return MergeSortHighscores(highscores);
             }
             catch (Exception ex)
             {
                 Console.WriteLine(ex.Message);
-                return new List<(int Score, DateTime Date)>();
+                return new List<(int Score, string Date)>();
             }
         }
 
-        private List<(int Score, DateTime Date)> MergeSortHighscores(List<(int Score, DateTime Date)> highscores)
+        private List<(int Score, string Date)> MergeSortHighscores(List<(int Score, string Date)> highscores)
         {
             if (highscores.Count <= 1) return highscores;
 
@@ -237,9 +246,9 @@ namespace TetraClashServer
             return Merge(left, right);
         }
 
-        private List<(int Score, DateTime Date)> Merge(List<(int Score, DateTime Date)> left, List<(int Score, DateTime Date)> right)
+        private List<(int Score, string Date)> Merge(List<(int Score, string Date)> left, List<(int Score, string Date)> right)
         {
-            var result = new List<(int Score, DateTime Date)>();
+            var result = new List<(int Score, string Date)>();
             int leftIndex = 0, rightIndex = 0;
 
             while (leftIndex < left.Count && rightIndex < right.Count)
